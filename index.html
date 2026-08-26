@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>文枢·星课 · 红旗渠——实践·认识·再实践</title>
+<script src="https://api.tianditu.gov.cn/api?v=4.0&tk=1c2c2afa0a4842bee16380f4f6e2b947"></script>
+<style>
+/* ===== theme_token.md 全套 CSS 变量（Kimi 撰写视觉基准） ===== */
+:root {
+  --primary: #C81623; --primary-deep: #8E0F18; --accent: #D4A017;
+  --bg: #FBF7F0; --panel: #FFFFFF; --ink: #2B2B2B; --ink-sub: #6B6B6B;
+  --line: #E3DAC8; --water: #2E6FA3;
+  --practice: #C81623; --cognition: #D4A017; --repractice: #7A1F1F;
+  --radius: 10px; --radius-sm: 6px;
+  --font-title: "Noto Serif SC","Source Han Serif SC","SimSun",serif;
+  --font-body: -apple-system,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+html,body { height:100%; }
+body { font-family:var(--font-body); background:var(--bg); color:var(--ink); font-size:16px; -webkit-font-smoothing:antialiased; }
+
+/* ===== 栅格：CSS Grid + 移动优先 ===== */
+.app { display:grid; grid-template-columns:1fr; grid-template-rows:1fr auto; min-height:100vh; }
+.main { display:grid; grid-template-columns:1fr; min-height:0; }
+.stepper { background:var(--panel); border-bottom:1px solid var(--line); padding:14px; overflow-y:auto; }
+.map-stage { position:relative; min-height:42vh; background:var(--bg); border-bottom:1px solid var(--line); }
+.map-stage__map { position:absolute; inset:0; }
+.timeline-bar { position:sticky; bottom:0; background:var(--panel); border-top:1px solid var(--line); padding:10px 12px; z-index:20; }
+
+@media (min-width:768px) {
+  .main { grid-template-columns:300px 1fr; }
+  .stepper { border-bottom:none; border-right:1px solid var(--line); min-height:0; }
+  .map-stage { min-height:0; border-bottom:none; }
+  .timeline-bar { position:static; }
+}
+@media (min-width:1280px) {
+  .main { grid-template-columns:240px 1fr 320px; }
+  .stepper { border-right:1px solid var(--line); }
+  .map-stage { border-right:1px solid var(--line); }
+  /* 桌面弹窗居中 */
+  .detail { align-items:center; }
+  .detail__card { max-width:560px; border-radius:var(--radius); max-height:80vh; }
+}
+
+
+/* ===== 右栏：当前阶段图片钩子（用户定图后填充） ===== */
+.stage-img { display:none; }
+@media (min-width:1280px) {
+  .stage-img { display:block; border-left:1px solid var(--line); background:var(--panel); min-height:0; overflow-y:auto; padding:14px; }
+  .stage-img__inner { height:100%; display:flex; flex-direction:column; }
+  .stage-img__placeholder { flex:1; display:flex; align-items:center; justify-content:center; color:var(--ink-sub); font-size:13px; border:1px dashed var(--line); border-radius:var(--radius); min-height:200px; }
+}
+/* ===== 头部 ===== */
+.app__head {
+  background:var(--panel); border-bottom:1px solid var(--line);
+  padding:14px 18px;
+}
+.app__head h1 { font-family:var(--font-title); font-weight:700; font-size:20px; color:var(--primary-deep); }
+.app__head .sub { font-size:13px; color:var(--ink-sub); margin-top:4px; }
+
+/* ===== 时间轴（移动端底部固定） ===== */
+.tl { display:flex; align-items:center; gap:2px; }
+.tl__node { display:flex; flex-direction:column; align-items:center; gap:4px; flex:1; background:none; border:none; cursor:pointer; }
+.tl__dot { width:14px; height:14px; border-radius:50%; border:2px solid var(--line); background:var(--panel); transition:all .3s ease-out; }
+.tl__year { font-size:11px; color:var(--ink-sub); }
+.tl__node.active .tl__dot { background:var(--primary); border-color:var(--primary-deep); transform:scale(1.2); }
+.tl__node.active .tl__year { color:var(--primary-deep); font-weight:700; }
+.tl__node:focus-visible .tl__dot { outline:2px solid var(--accent); outline-offset:2px; }
+
+/* ===== 左栏 stepper ===== */
+.stepper__title { font-family:var(--font-title); font-weight:600; font-size:15px; color:var(--primary-deep); margin-bottom:10px; }
+.stepper__list { display:flex; flex-direction:column; gap:6px; }
+.stepper__node { display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:var(--radius-sm); cursor:pointer; border:1px solid transparent; background:none; width:100%; text-align:left; }
+.stepper__node .dot { width:10px; height:10px; border-radius:50%; border:2px solid var(--line); background:var(--panel); flex-shrink:0; }
+.stepper__node .label { font-size:13px; color:var(--ink); }
+.stepper__node .phase { font-size:11px; color:var(--ink-sub); }
+.stepper__node.active { background:var(--bg); border-color:var(--primary); }
+.stepper__node.active .dot { background:var(--primary); border-color:var(--primary-deep); }
+.stepper__node.active .label { color:var(--primary-deep); font-weight:700; }
+.stepper__node:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
+
+/* ===== 详情弹层（全局唯一） ===== */
+.detail {
+  position:fixed; top:0; left:0; right:0; bottom:0; z-index:2000;
+  background:rgba(43,43,43,.45); display:none; align-items:center; justify-content:center;
+}
+.detail__card {
+  background:var(--panel); width:100%; max-width:640px; max-height:85vh; overflow-y:auto;
+  border-radius:var(--radius) var(--radius) 0 0; padding:18px 20px 22px;
+  box-shadow:0 8px 24px rgba(43,43,43,.14);
+}
+.detail.open { display:flex; }
+.detail__head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; }
+.detail__title { font-family:var(--font-title); font-size:20px; font-weight:700; color:var(--primary-deep); }
+.detail__meta { font-size:12px; color:var(--ink-sub); margin-top:4px; }
+.detail__close { background:none; border:1px solid var(--line); border-radius:var(--radius-sm); padding:4px 10px; cursor:pointer; font-size:14px; color:var(--ink); }
+.detail__close:focus-visible { outline:2px solid var(--accent); }
+
+/* Tab */
+.tabs { display:flex; gap:6px; border-bottom:2px solid var(--line); margin-bottom:14px; }
+.tab { background:none; border:none; padding:8px 14px; font-size:14px; color:var(--ink-sub); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-2px; }
+.tab[aria-selected="true"] { color:var(--primary-deep); font-weight:700; border-bottom-color:var(--primary); }
+.tab:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
+
+.detail__body { font-size:14px; line-height:1.7; color:var(--ink); }
+.detail__body .block { margin-bottom:16px; }
+.detail__body .block h4 { font-size:14px; font-weight:700; color:var(--primary-deep); margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.practice-chip { border:1px solid var(--practice); color:var(--practice); border-radius:4px; padding:0 6px; font-size:11px; }
+.cognition-chip { border:1px solid var(--cognition); color:var(--primary-deep); border-radius:4px; padding:0 6px; font-size:11px; }
+.repractice-chip { border:1px solid var(--repractice); color:var(--repractice); border-radius:4px; padding:0 6px; font-size:11px; }
+.keydata { border-left:3px solid var(--accent); padding-left:10px; color:var(--primary-deep); font-weight:600; }
+.anch-src { font-size:13px; color:var(--ink-sub); margin-top:4px; }
+.anch-excerpt { font-style:italic; color:var(--ink); border-left:3px solid var(--line); padding-left:10px; margin-top:6px; }
+.anch-edition { font-size:11px; color:var(--ink-sub); margin-top:4px; }
+.src-link { display:block; font-size:13px; color:var(--water); margin-top:4px; text-decoration:underline; }
+.aux-block, .contemp-block { border:1px solid var(--line); border-radius:var(--radius-sm); padding:10px; margin-top:8px; }
+.aux-block h5 { font-size:13px; color:var(--primary-deep); margin-bottom:4px; }
+.contemp-block h5 { font-size:13px; color:var(--accent); margin-bottom:4px; }
+.note-mark { font-size:11px; color:var(--ink-sub); }
+
+
+/* ===== 学段切换（I4）：换根 class 切 CSS 变量，DOM 不重排 ===== */
+.app__head { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; }
+.grade-switch { display:flex; gap:4px; background:var(--bg); border:1px solid var(--line); border-radius:var(--radius-sm); padding:3px; }
+.grade-btn { background:none; border:none; padding:5px 12px; font-size:13px; color:var(--ink-sub); cursor:pointer; border-radius:4px; }
+.grade-btn.active { background:var(--primary); color:#fff; font-weight:700; }
+.grade-btn:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
+/* 四学段 CSS 变量 override：只改值，不重排 DOM（theme_token §6） */
+.app[data-grade="小学"] { --body-size: 18px; }
+.app[data-grade="初中"] { --body-size: 16px; }
+.app[data-grade="高中"] { --body-size: 16px; }
+.app[data-grade="大学"] { --body-size: 15px; }
+.app[data-grade="大学"] { --ink: #1a1a1a; }
+.detail__body { font-size: var(--body-size, 16px); }
+
+
+/* 渠线续长段闪两次高亮 */
+.seg-flash { animation: segflash 1s ease-in-out 2; }
+@keyframes segflash { 0%,100%{opacity:1} 50%{opacity:.15} }
+/* 移动端(<768) 弹窗底部弹出（放末尾确保覆盖 base center） */
+@media (max-width:767px) {
+  .detail { align-items:flex-end; }
+  .detail__card { border-radius:var(--radius) var(--radius) 0 0; max-height:85vh; }
+}
+
+/* ===== 无障碍 ===== */
+@media (prefers-reduced-motion: reduce) {
+  * { animation:none !important; transition:none !important; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="app__head">
+    <h1>红旗渠 · 实践·认识·再实践</h1>
+    <div class="sub">文枢·星课 ｜ 点击节点查看毛选理论溯源与史实溯源</div>
+    <div class="grade-switch" role="group" aria-label="学段切换">
+      <button class="grade-btn" data-grade="小学">小学</button>
+      <button class="grade-btn" data-grade="初中">初中</button>
+      <button class="grade-btn" data-grade="高中">高中</button>
+      <button class="grade-btn active" data-grade="大学">大学</button>
+    </div>
+  </header>
+  <div class="main">
+    <aside class="stepper" aria-label="辩证阶段导航">
+      <div class="stepper__title">辩证阶段</div>
+      <div class="stepper__list" id="stepper-list"></div>
+    </aside>
+    <section class="map-stage" aria-label="红旗渠地图">
+      <div class="map-stage__map" id="tianditu"></div>
+    </section>
+    <!-- 右栏：当前阶段图片钩子（待用户定图后填充） -->
+    <section class="stage-img" aria-label="当前阶段图示">
+      <div class="stage-img__inner" id="stage-img">
+        <div class="stage-img__placeholder" id="stage-img-placeholder">图示待定</div>
+      </div>
+    </section>
+  </div>
+  <nav class="timeline-bar" aria-label="时间轴">
+    <div class="tl" id="timeline"></div>
+  </nav>
+</div>
+
+<!-- 全局唯一详情弹层 -->
+<div class="detail" id="detail-panel" role="dialog" aria-modal="true" aria-labelledby="detail-title">
+  <div class="detail__card" id="detail-card">
+    <div class="detail__head">
+      <div>
+        <div class="detail__title" id="detail-title"></div>
+        <div class="detail__meta" id="detail-meta"></div>
+      </div>
+      <button class="detail__close" id="detail-close" aria-label="关闭">×</button>
+    </div>
+    <div class="tabs" role="tablist" id="detail-tabs"></div>
+    <div class="detail__body" id="detail-body"></div>
+  </div>
+</div>
+
+<script>
+const DATA = {
+ "meta": {
+  "title": "文枢·星课 · 红旗渠 case_points",
+  "version": "1.2",
+  "date": "2026-08-27",
+  "source_report": "总结报告_红旗渠六关键节点实践认识再实践报告.html（通义千问生成，6节点）",
+  "anch_kb": "文枢毛选知识库 E:\\双创知识库\\10_文枢skill\\kb_毛选",
+  "note": "anch 经毛选知识库核实为真值；edition/year 待核（答辩前 MA 核对）。地理坐标来自用户提供的林州红旗渠实测/估算值；天地图 API 用(lng,lat)序。",
+  "schema": "id,year,title,phase_set,practice,recognition,repractice,key_data,source[]{title,url},anch{src,vol,page,block_id,excerpt,edition},geo{lng,lat},grade{小学,初中,高中,大学}",
+  "schema_note": "node 7 的 anch 为精神谱系溯源（anch=核心 + anch_auxiliary[] + anch_contemporary），与前6节点单篇直接 anch 显式区分；edition 待核。",
+  "geo_note": "geo 已去重：原{1,5,7}共点分水苑、{2,6}共点青年洞；现 7 节点坐标全异，并加 precision 字段（实测/估算）。"
+ },
+ "map": {
+  "key": "1c2c2afa0a4842bee16380f4f6e2b947",
+  "center": [
+   36.23,
+   113.82
+  ],
+  "zoom": 11,
+  "center_note": "分水苑（工程指挥部/纪念馆所在地）；视角自南(分水苑)向北(青年洞)约25公里主干渠走向"
+ },
+ "points": [
+  {
+   "id": 1,
+   "year": "1960.02",
+   "title": "工程开工",
+   "phase_set": "实践—认识—再实践",
+   "practice": "1960年2月11日，林县县委发布《引漳入林动员令》，3万余名民工携带工具、口粮和被褥奔赴太行山，全面启动红旗渠建设，采取“全线开花”方式在140华里战线上同时施工。",
+   "recognition": "初期“全线铺开”导致指挥混乱、资源浪费，暴露出对工程难度估计不足，促使县委认识到必须集中兵力、科学规划，避免盲目冒进。",
+   "repractice": "1960年3月召开盘阳会议，决定分期推进、修成一段通水一段，并正式命名“红旗渠”，实施“打歼灭战”战术，改变全线突击为分段攻坚。",
+   "key_data": "3万余名民工参与开工。",
+   "source": [
+    {
+     "title": "鉴往知来，跟着总书记学历史丨50多年前建成的这条“人工天河”，镌刻下了什么？_央广网",
+     "url": "https://news.cnr.cn/native/gd/sz/20221029/t20221029_526045542.shtml"
+    }
+   ],
+   "anch": {
+    "src": "关心群众生活，注意工作方法",
+    "vol": "第一卷",
+    "page": "136",
+    "block_id": "^v01p0136",
+    "excerpt": "真正的铜墙铁壁是什么？是群众，是千百万真心实意地拥护革命的群众。",
+    "edition": "待核"
+   },
+   "geo": {
+    "lng": 113.82,
+    "lat": 36.23,
+    "precision": "估算",
+    "note": "分水苑·渠首（引漳入林开工指挥部）"
+   },
+   "grade": {
+    "小学": "1960年，很多叔叔阿姨去山上开始修一条大水渠。",
+    "初中": "林县县委号召开工，三万人在太行山同时动工，但发现一起干太乱，要重新计划。",
+    "高中": "引漳入林全线开工暴露指挥与资源问题，盘阳会议转向分段攻坚、修通一段用一段。",
+    "大学": "实践先行暴露认识盲区：全线铺开违背工程规律，由此转向“科学规划、分期推进”"
+   }
+  },
+  {
+   "id": 2,
+   "year": "1960.11",
+   "title": "青年洞开凿（300青年突击队）",
+   "phase_set": "实践—认识—再实践",
+   "practice": "1960年11月，在上级要求“百日休整”背景下，300名青年组成突击队，于坚硬石英砂岩中悬空作业，采用铁锤钢钎人工开凿青年洞，历时一年零五个月。",
+   "recognition": "青年突击队以“宁愿苦干、不愿苦熬”的信念，体现了自力更生、艰苦创业、团结协作、无私奉献的红旗渠精神，彰显了青年一代的责任担当。",
+   "repractice": "青年洞贯通后，成为后续工程推进的关键节点，并被命名为“青年洞”，纳入爱国主义教育体系，持续开展精神传承与研学活动。",
+   "key_data": "青年洞全长616米，是红旗渠总干渠最长的隧洞。",
+   "source": [
+    {
+     "title": "新太行石头颂_央广网",
+     "url": "https://hn.cnr.cn/hnpdgb/jdt/20250401_t20250401_527119758.html"
+    },
+    {
+     "title": "搜索红色记忆：图说红旗渠纪念馆_央广网",
+     "url": "https://hn.cnr.cn/thhn/20141023_516648874_1.shtml"
+    }
+   ],
+   "anch": {
+    "src": "组织起来",
+    "vol": "第三卷",
+    "page": "928",
+    "block_id": "^v03p0928",
+    "excerpt": "三个臭皮匠，合成一个诸葛亮，这就是说，群众有伟大的创造力。",
+    "edition": "待核"
+   },
+   "geo": {
+    "lng": 113.759934,
+    "lat": 36.356413,
+    "precision": "实测",
+    "note": "青年洞（用户给定精确坐标）"
+   },
+   "grade": {
+    "小学": "300个大哥哥在悬崖上用锤子凿山洞，凿了一年零五个月。",
+    "初中": "300名青年组成突击队，在硬石头上悬空凿洞，苦干一年零五个月，凿通青年洞",
+    "高中": "300名青年悬空凿石一年零五个月，凿通616米青年洞。人工天河最险的一段，靠锤钎和双手凿出来",
+    "大学": "“百日休整”令下青年坚持凿洞：实践是认识的源泉，自力更生从口号变成616米实打实的工程"
+   }
+  },
+  {
+   "id": 3,
+   "year": "1961.07",
+   "title": "资金短缺面临停工（是否继续）",
+   "phase_set": "实践—认识—再实践",
+   "practice": "1961年7月，因国家经济困难，红旗渠建设遭遇资金短缺与上级质疑，杨贵在地委会议上据实申述林县缺水实情与群众意愿，顶住压力坚持建设。",
+   "recognition": "干部群众逐步统一思想，认识到“等靠要”不是共产党人态度，唯有自力更生才能改变命运，坚定了为民造福的初心。",
+   "repractice": "在资金极度紧张情况下，留下300余名青年继续攻坚青年洞，并组织劳力外出承揽工程创收，实现资金自筹，保障工程持续推进。",
+   "key_data": "红旗渠工程总投资约6868.64万元，其中林县人民自筹资金5839.66万元，占比85.06%。",
+   "source": [
+    {
+     "title": "鉴往知来，跟着总书记学历史丨50多年前建成的这条“人工天河”_央广网",
+     "url": "https://news.cnr.cn/native/gd/sz/20221029/t20221029_526045542.shtml"
+    },
+    {
+     "title": "伟大征程丨一锤一钎劈山引水 他们在悬崖峭壁上凿出“人工天河”_央广网",
+     "url": "https://news.cnr.cn/native/gd/20260622/t20260622_527671971.shtml"
+    }
+   ],
+   "anch": {
+    "src": "反对本本主义",
+    "vol": "第一卷",
+    "page": "109-118",
+    "block_id": "^v01p0109",
+    "excerpt": "没有调查，没有发言权",
+    "edition": "待核"
+   },
+   "geo": {
+    "lng": 113.8,
+    "lat": 36.28,
+    "precision": "估算",
+    "note": "姚村/总指挥部一带"
+   },
+   "grade": {
+    "小学": "没钱了，大家就省吃俭用、自带干粮工具，也要把渠修下去",
+    "初中": "资金困难时杨贵如实向上级反映缺水实情，全县人民不等不靠、自筹资金接着干",
+    "高中": "资金危机下不“等靠要”：自筹资金占85%以上，工程得以延续",
+    "大学": "再实践检验认识：脱离实际的本本主义行不通，唯有调查实情、依靠群众才能破局"
+   }
+  },
+  {
+   "id": 4,
+   "year": "1962",
+   "title": "技术革新（自制炸药、水泥）",
+   "phase_set": "实践—认识—再实践",
+   "practice": "面对物资短缺，民工群众利用硝酸铵化肥混合锯末、煤面等原料自制炸药，并通过扩建曲山水泥厂、公社自建小厂等方式生产水泥，缓解供应危机。",
+   "recognition": "形成了“自力更生是法宝，众人拾柴火焰高；建渠不能靠国家，全靠双手来创造”的集体信念，强调依靠群众智慧克服困难。",
+   "repractice": "推广“土法上马”模式，自制建材广泛应用于全线爆破与砌筑工程，并将技术经验在全国科学大会上展示推广，形成可复制的技术路径。",
+   "key_data": "红旗渠建设中共使用水泥6705吨，其中自制5170吨，占比77.1%。",
+   "source": [
+    {
+     "title": "中国共产党新闻网：红旗渠精神的由来与发展（自制水泥七成以上/自制炸药1215吨/明窑堆石烧灰法/三角炮位药壶爆破/土吊车/盆面测量法等上百项技术成果）",
+     "url": "https://cpc.people.com.cn/BIG5/n1/2022/1110/c443712-32562880.html"
+    }
+   ],
+   "anch": {
+    "src": "实践论",
+    "vol": "第一卷",
+    "page": "282",
+    "block_id": "^v01p0282",
+    "excerpt": "马克思以前的唯物论，离开人的社会性，离开人的历史发展，去观察认识问题，因此不能了解认识对社会实践的依赖关系，即认识对生产和阶级斗争的依赖关系。",
+    "edition": "待核",
+    "excerpt_status": "已核·待MA复核"
+   },
+   "geo": {
+    "lng": 113.78,
+    "lat": 36.32,
+    "precision": "估算",
+    "note": "技术革新点（自制炸药水泥工区）"
+   },
+   "grade": {
+    "小学": "没有炸药和水泥，大家自己动手造。",
+    "初中": "用土办法自己做炸药和水泥，省钱又管用。",
+    "高中": "缺水泥缺炸药，就自己造：自制水泥占77%，炸药1215吨全部自产",
+    "大学": "材料匮乏之下，群众自己造出炸药和水泥，土法技术经再实践验证后推广开来"
+   }
+  },
+  {
+   "id": 5,
+   "year": "1965.04",
+   "title": "总干渠通水",
+   "phase_set": "实践—认识—再实践",
+   "practice": "1965年4月5日，红旗渠总干渠正式通水，削平山头1250座，开凿隧洞211个，架设渡槽152座，实现自流引水，终结林县“水贵如油”历史。",
+   "recognition": "通水成功标志着“人工天河”梦想成真，成为红旗渠精神的实物象征，极大增强了群众对自力更生道路的信心。",
+   "repractice": "通水后持续推进三条干渠和支渠配套建设，至1969年7月实现全线竣工，并启动多轮现代化续建改造工程，提升灌区运行效能。",
+   "key_data": "总干渠通水后，水浇地面积从不足1万亩扩大至60万亩。",
+   "source": [
+    {
+     "title": "【中国共产党百年瞬间】红旗渠总干渠建成通水_央广网",
+     "url": "https://china.cnr.cn/gdgg/20210128/t20210128_525401930.shtml"
+    }
+   ],
+   "anch": {
+    "src": "愚公移山",
+    "vol": "第三卷",
+    "page": "1101-1104",
+    "block_id": "^v03p1101",
+    "excerpt": "中国古代有个寓言，叫做“愚公移山”",
+    "edition": "待核"
+   },
+   "geo": {
+    "lng": 113.8,
+    "lat": 36.25,
+    "precision": "估算",
+    "note": "总干渠通水点（分水苑下游）"
+   },
+   "grade": {
+    "小学": "1965年，水终于从山上流下来啦！大家高兴得跳起来",
+    "初中": "修通总干渠，林县不再缺水，大家很高兴。",
+    "高中": "通水终结“水贵如油”历史，水浇地扩至60万亩，全靠自己一锤一钎修出来",
+    "大学": "再实践兑现认识：人工天河是群众创造历史的物证，信心来自可验证的成果。"
+   }
+  },
+  {
+   "id": 6,
+   "year": "1969.07",
+   "title": "全线竣工（粮食亩产100→476公斤）",
+   "phase_set": "实践—认识—再实践",
+   "practice": "1969年7月，红旗渠所有支渠建成，工程全面竣工，形成覆盖全县的灌溉网络，开始长期发挥农业供水效益。",
+   "recognition": "红旗渠的建成不仅是水利工程胜利，更是群众路线和艰苦奋斗精神的伟大实践，证明了人民群众能够创造历史奇迹。",
+   "repractice": "持续开展灌区配套与节水改造，推动农业产业结构调整，发展菊花、小米、红薯等特色产业，促进乡村振兴。",
+   "key_data": "红旗渠修建前林县粮食亩产约为100公斤；到1991年，粮食亩产达到476.3公斤，实现历史性跨越。",
+   "source": [
+    {
+     "title": "青春热血镌刻太行之巅——写在红旗渠工程全面竣工54周年之际_央广网",
+     "url": "https://news.cnr.cn/native/gd/20230706/t20230706_526318113.shtml"
+    },
+    {
+     "title": "红旗渠通水60年已累计引水超过130亿立方米_央广网",
+     "url": "https://www.cnr.cn/newscenter/native/gd/kx/20250404/t20250404_527123920.shtml"
+    }
+   ],
+   "anch": {
+    "src": "为人民服务",
+    "vol": "第三卷",
+    "page": "1004-1006",
+    "block_id": "^v03p1004",
+    "excerpt": "我们这个队伍完全是为着解放人民的，是彻底地为人民的利益工作的。",
+    "edition": "待核",
+    "excerpt_status": "已核·待MA复核"
+   },
+   "geo": {
+    "lng": 113.81,
+    "lat": 36.21,
+    "precision": "估算",
+    "note": "灌区/竣工庆典地（分水苑南）"
+   },
+   "grade": {
+    "小学": "水渠全修好了，大家都能用上水。",
+    "初中": "全部支渠建成，全县都能浇地了。",
+    "高中": "竣工形成全县灌网，亩产从100公斤跃到476公斤，粮食问题基本解决",
+    "大学": "竣工兑现“为人民服务”的承诺：亩产476公斤是人民创造历史的实证，精神沉淀为全县灌网"
+   }
+  },
+  {
+   "id": 7,
+   "year": "当代",
+   "title": "当代赓续（再实践→新认识→新实践）",
+   "phase_set": "再实践—新认识—新实践",
+   "practice": "新时代林州人民把红旗渠精神转化为新实践：2023年1月竣工的南水北调安阳市西部调水工程（铺设37.67公里输水管道、贯通13.13公里隧洞，被誉为“新时代的红旗渠”）；以“太行引擎”为标识的新质生产力培育（低空经济、新型显示、电子新材料）；以光远新材自力更生创业、“渠三代”护渠、红旗渠研学宣讲为代表的乡村振兴与精神传承。",
+   "recognition": "红旗渠精神在新时代的传承实践，反过来印证《实践论》所揭示的认识规律——“一个正确的认识，往往需要经过由实践到认识、由认识到实践这样多次的反复，才能够完成”。红旗渠不是历史标本，而是辩证唯物主义认识论在新时代的生动实践成果——精神之渠仍在流淌。",
+   "repractice": "认识回到实践产生新成果：止方村从穷山村变为集体收入超百万元的“网红村”（新华网2022）；“渠三代”张学义守护49公里渠线、“渠四代”李媛向6000余名学员宣讲红旗渠故事（人民网2025）；光远新材料以自力更生攻克关键核心技术。“实践—认识—再实践”在跨时代继续展开，印证认识论规律穿越时空的有效性。",
+   "key_data": "西部调水工程2023年竣工（37.67公里管道/13.13公里隧洞，学习时报2025）；止方村2021集体收入118万元（新华网2022）。其余当代宏观数字待新华社系来源核。",
+   "source": [
+    {
+     "title": "学习时报：书写传承弘扬红旗渠精神的时代篇章——河南安阳以红旗渠精神引领高质量发展（西部调水/新质生产力/乡村振兴）",
+     "url": "https://www.studytimes.cn/tbzt/XSDSJGS/202508/t20250825_82515.html"
+    },
+    {
+     "title": "新华网：接过红旗渠精神“接力棒”踏上新征程（止方村振兴/渠四代李媛研学宣讲）",
+     "url": "https://www.xinhuanet.com/2022-11/25/c_1129159813.htm"
+    },
+    {
+     "title": "人民网：青春华章丨“渠三代”张学义护渠（新时代护渠人接力）",
+     "url": "https://js.people.com.cn/n2/2025/1015/c360303-41381039.html"
+    },
+    {
+     "title": "红旗渠通水60年已累计引水超过130亿立方米_央广网",
+     "url": "https://www.cnr.cn/newscenter/native/gd/kx/20250404/t20250404_527123920.shtml"
+    },
+    {
+     "title": "央广网（转人民日报）：河南安阳林州市把红色基因转化为实干动能——发扬红旗渠精神 推进乡村全面振兴（2026-07-10）",
+     "url": "https://news.cnr.cn/native/gd/20260710/t20260710_527702460.shtml"
+    }
+   ],
+   "anch": {
+    "src": "愚公移山",
+    "vol": "第三卷",
+    "page": "1101-1104",
+    "block_id": "^v03p1101",
+    "excerpt": "中国古代有个寓言，叫做“愚公移山”（精神谱系核心锚点；KB OCR 待校）",
+    "edition": "待核",
+    "role": "核心锚点·精神谱系溯源"
+   },
+   "geo": {
+    "lng": 113.83,
+    "lat": 36.235,
+    "precision": "估算",
+    "note": "红旗渠纪念馆/当代研学区"
+   },
+   "grade": {
+    "小学": "现在还有很多人来这里学习修渠的故事，把好办法传下去。",
+    "初中": "红旗渠精神今天还在帮我们建设家乡，办法从大家中间来。",
+    "高中": "从修渠到乡村振兴，实践—认识循环在当代延续，方法从群众中来。",
+    "大学": "当代赓续印证认识论闭环：精神作为方法论资源（从群众中来、到群众中去），驱动新一轮实践—认识跃迁。"
+   },
+   "role": "闭环回扣节点（轻量：不拉远地图/不加新图层，仅高亮 Marker + 时间轴末位变色）",
+   "anch_auxiliary": [
+    {
+     "src": "关心群众生活，注意工作方法",
+     "vol": "第一卷",
+     "page": "136",
+     "block_id": "^v01p0136",
+     "excerpt": "第一个问题是关于群众生活的问题。",
+     "edition": "待核",
+     "role": "辅助·群众路线"
+    },
+    {
+     "src": "关于领导方法的若干问题",
+     "vol": "第三卷",
+     "page": "897-902",
+     "block_id": "^v03p0897",
+     "excerpt": "从群众中来，到群众中去",
+     "edition": "待核",
+     "role": "辅助·方法论"
+    }
+   ],
+   "anch_contemporary": {
+    "src": "习近平总书记2022年10月28日在红旗渠考察时的讲话",
+    "excerpt": "社会主义是拼出来、干出来、拿命换来的，不仅过去如此，新时代也是如此",
+    "note": "当代印证，非《毛选》原文；node 7 不直接硬锚毛选某页"
+   }
+  }
+ ]
+};
+window.__DATA__ = DATA;
+
+/* ===== 全局 state ===== */
+const state = {
+  currentIndex: 0,   // 0-6
+  grade: '大学',
+  tab: 'event',      // event | theory | history
+};
+
+
+/* ===== 学段切换（I4） ===== */
+function setGrade(g) {
+  state.grade = g;
+  document.querySelector('.app').setAttribute('data-grade', g);
+  document.querySelectorAll('.grade-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.grade === g);
+  });
+  // 若弹层开着，刷新（事件详情文本按学段换）
+  if ($('#detail-panel').classList.contains('open')) renderDetail();
+}
+/* ===== 工具 ===== */
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $ = sel => document.querySelector(sel);
+
+const PHASE_CHIP = { practice:'实践', recognition:'认识', repractice:'再实践' };
+
+/* ===== 渲染：时间轴（I1） ===== */
+function renderTimeline() {
+  const tl = $('#timeline');
+  tl.innerHTML = '';
+  DATA.points.forEach((p, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'tl__node' + (i === state.currentIndex ? ' active' : '');
+    btn.setAttribute('aria-label', '节点' + (i+1) + ' ' + p.title);
+    btn.innerHTML = `<span class="tl__dot"></span><span class="tl__year">${esc(p.year)}</span>`;
+    btn.addEventListener('click', () => openDetail(i));
+    tl.appendChild(btn);
+  });
+}
+
+/* ===== 渲染：左栏 stepper ===== */
+function renderStepper() {
+  const list = $('#stepper-list');
+  list.innerHTML = '';
+  DATA.points.forEach((p, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'stepper__node' + (i === state.currentIndex ? ' active' : '');
+    btn.innerHTML = `<span class="dot"></span><span><span class="label">${esc(p.title)}</span><br><span class="phase">${esc(p.phase_set)}</span></span>`;
+    btn.addEventListener('click', () => openDetail(i));
+    list.appendChild(btn);
+  });
+}
+
+/* ===== 选择节点（全同步：时间轴/stepper/弹层） ===== */
+function selectNode(i) {
+  state.currentIndex = i;
+  renderTimeline();
+  renderStepper();
+  applyChannel(i);  // 渠线演进（在线/离线）
+  updateStageImg();  // 右栏图片钩子（待定图后渲染）
+}
+/* 右栏图片钩子：当前阶段占位（将来填图） */
+function updateStageImg() {
+  const ph = document.getElementById('stage-img-placeholder');
+  if (!ph) return;
+  const p = DATA.points[state.currentIndex];
+  ph.textContent = p.year + ' · ' + p.title + '（图示待定）';
+}
+
+
+/* ===== Phase 3 地图模块：在线天地图 + 离线 SVG + 双重判定降级 ===== */
+let mapInstance = null;
+let mapMarkers = [];
+let mapLine = null;
+let mapMode = 'loading';   // loading | online | svg
+
+/* 渠线 Polyline：7 节点 geo 连线 */
+function buildPolylinePoints() {
+  // 渠线随节点演进：只画到当前节点（含）为止，点下一节点续长
+  return DATA.points.slice(0, state.currentIndex + 1).map(p => new T.LngLat(p.geo.lng, p.geo.lat));
+}
+
+/* 在线天地图初始化 */
+function initOnlineMap() {
+  const center = DATA.map.center;
+  const map = new T.Map('tianditu', {
+    center: new T.LngLat(center[1], center[0]),  // map.center 为 [lat,lng]，转序
+    zoom: DATA.map.zoom,
+    layers: [new T.TileLayer('vec')]             // 矢量底图
+  });
+  mapInstance = map;
+  mapMode = 'online';
+  // Marker（白描边）+ Polyline
+  mapMarkers = DATA.points.map((p, i) => {
+    const m = new T.Marker(new T.LngLat(p.geo.lng, p.geo.lat), { icon: markerIcon(i) });
+    m.on('click', () => openDetail(i));
+    map.addOverLay(m);
+    return m;
+  });
+  mapLine = new T.Polyline(buildPolylinePoints(), {
+    color: '#C81623', weight: 4, opacity: 0.9
+  });
+  map.addOverLay(mapLine);
+  // 联动：当前节点高亮
+  highlightMapNode(state.currentIndex);
+}
+
+/* Marker 图标：白描边红点 */
+function markerIcon(i) {
+  const active = i === state.currentIndex;
+  return new T.Icon({
+    iconUrl: 'data:image/svg+xml;utf8,' + encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"><circle cx="9" cy="9" r="7" fill="${active?'#C81623':'#FFFFFF'}" stroke="#FFFFFF" stroke-width="2"/></svg>`
+    ),
+    iconSize: new T.Point(18, 18)
+  });
+}
+
+/* 地图联动：高亮当前节点 Marker + panTo 居中（3b） */
+function highlightMapNode(i) {
+  if (!mapInstance || mapMode !== 'online') return;
+  const p = DATA.points[i];
+  mapMarkers.forEach((m, idx) => m.setIcon(markerIcon(idx)));
+  // panTo 居中到当前节点
+  mapInstance.panTo(new T.LngLat(p.geo.lng, p.geo.lat));
+  setPolylineForNode(i);  // 渠线演进到当前节点 + 闪两次
+  mapInstance.setZoom(Math.max(mapInstance.getZoom(), 11));
+}
+
+
+/* 渠线随节点演进 + 闪两次高亮（在线） */
+function setPolylineForNode(i) {
+  if (!mapInstance || mapMode !== 'online' || !mapLine) return;
+  try {
+    mapLine.setPath(buildPolylinePoints());  // 更新到当前节点
+    // 闪两次高亮续长段
+    const last = DATA.points[i];
+    const hl = new T.Polyline([new T.LngLat(last.geo.lng, last.geo.lat), new T.LngLat(last.geo.lng, last.geo.lat)], {
+      color: '#D4A017', weight: 8, opacity: 1
+    });
+    map.addOverLay(hl);
+    let k = 0;
+    const flash = setInterval(() => {
+      k++;
+      hl.setOpacity(k % 2 === 1 ? 1 : 0.2);
+      if (k >= 4) { clearInterval(flash); map.removeOverLay(hl); }  // 闪两次(4半周期)
+    }, 250);
+  } catch(e) {}
+}
+/* 离线可交互 SVG（3c）：渠线 + 7 可点 Marker，共用同一 state */
+let svgEl = null;
+function buildOfflineSvg() {
+  const stage = document.querySelector('#tianditu');
+  if (mapInstance) { try { mapInstance.clearOverLays(); } catch(e){} mapInstance = null; }
+  mapMarkers = []; mapLine = null;
+  stage.innerHTML = '';
+  mapMode = 'svg';
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(svgNS, 'svg');
+  svg.setAttribute('viewBox', '0 0 400 300');
+  svg.setAttribute('width', '100%');
+  svg.setAttribute('height', '100%');
+  svg.style.background = '#FBF7F0';
+  // 全部 7 点（Marker 用）+ 渠线只画到当前节点（演进）
+  const allPts = DATA.points.map(p => projXY(p.geo.lng, p.geo.lat));
+  const pts = allPts.slice(0, state.currentIndex + 1);  // 渠线演进
+  const line = document.createElementNS(svgNS, 'polyline');
+  line.setAttribute('points', pts.map(pt => pt.x + ',' + pt.y).join(' '));
+  line.setAttribute('fill', 'none');
+  line.setAttribute('stroke', '#C81623');
+  line.setAttribute('stroke-width', '3');
+  line.setAttribute('stroke-linecap', 'round');
+  line.setAttribute('stroke-linejoin', 'round');
+  svg.appendChild(line);
+  // 续长段闪两次高亮（最后一段）
+  if (pts.length >= 2) {
+    const last = pts[pts.length - 2];
+    const cur = pts[pts.length - 1];
+    const flashSeg = document.createElementNS(svgNS, 'line');
+    flashSeg.setAttribute('x1', last.x); flashSeg.setAttribute('y1', last.y);
+    flashSeg.setAttribute('x2', cur.x); flashSeg.setAttribute('y2', cur.y);
+    flashSeg.setAttribute('stroke', '#D4A017');
+    flashSeg.setAttribute('stroke-width', '6');
+    flashSeg.setAttribute('stroke-linecap', 'round');
+    flashSeg.classList.add('seg-flash');
+    svg.appendChild(flashSeg);
+  }
+  // 7 可点 Marker（复用 openDetail）
+  DATA.points.forEach((p, i) => {
+    const c = document.createElementNS(svgNS, 'circle');
+    c.setAttribute('cx', allPts[i].x); c.setAttribute('cy', allPts[i].y);
+    c.setAttribute('r', '7');
+    c.setAttribute('fill', '#FFFFFF');
+    c.setAttribute('stroke', '#C81623');
+    c.setAttribute('stroke-width', '2');
+    c.style.cursor = 'pointer';
+    c.addEventListener('click', () => openDetail(i));
+    svg.appendChild(c);
+  });
+  stage.appendChild(svg);
+  svgEl = svg;
+}
+
+/* 地理坐标 → SVG 平面投影（简化，仅示意渠线走向） */
+function projXY(lng, lat) {
+  const bounds = { lngMin: 113.74, lngMax: 113.84, latMin: 36.19, latMax: 36.37 };
+  const x = (lng - bounds.lngMin) / (bounds.lngMax - bounds.lngMin) * 360 + 20;
+  const y = (bounds.latMax - lat) / (bounds.latMax - bounds.latMin) * 260 + 20;
+  return { x, y };
+}
+
+/* 双重判定降级（3c）：对象失败立即降级；创建成功但 5s 无瓦片也降级 */
+function initMap() {
+  mapMode = 'loading';
+  try {
+    if (typeof T === 'undefined' || !T.Map) throw new Error('天地图API未加载');
+    initOnlineMap();
+    // 5s 后检查瓦片是否铺上
+    setTimeout(() => {
+      // 检测地图瓦片容器内的真实瓦片（排除 logo 等非瓦片 img）
+      const tilePane = document.querySelector('#tianditu .tdt-tile-pane');
+      // 只数"真正加载成功"的瓦片（complete 且 naturalWidth>0），abort/失败残留的 img 不算
+      const tileCount = tilePane ? Array.from(tilePane.querySelectorAll('img')).filter(i => i.complete && i.naturalWidth > 0).length : 0;
+      if (mapMode === 'online' && tileCount === 0) {
+        console.warn('天地图 5s 无瓦片，降级离线 SVG');
+        buildOfflineSvg();
+      }
+    }, 5000);
+  } catch (e) {
+    console.warn('天地图初始化失败，降级离线 SVG:', e.message);
+    buildOfflineSvg();
+  }
+}
+
+/* ===== 详情弹层（I2 单弹层 + 三 Tab） ===== */
+/* 渠线演进（在线/离线） */
+function applyChannel(i) {
+  if (mapMode === 'online') highlightMapNode(i);       // 在线：Marker高亮+panTo+渠线演进
+  else if (mapMode === 'svg') buildOfflineSvg();       // 离线：重建渠线（随节点演进）
+}
+
+function openDetail(i) {
+  state.currentIndex = i;
+  state.tab = 'event';
+  renderTimeline(); renderStepper(); applyChannel(i); updateStageImg(); renderDetail();
+  $('#detail-panel').classList.add('open');
+  $('#detail-close').focus();
+}
+
+function closeDetail() {
+  $('#detail-panel').classList.remove('open');
+  // 焦点返回时间轴当前节点
+  $('#timeline .tl__node.active')?.focus();
+}
+
+function renderTabs() {
+  const tabs = $('#detail-tabs');
+  tabs.innerHTML = '';
+  // 小学档隐藏两个溯源 Tab（theme_token §6：极简，藏溯源层）
+  const isPrimary = state.grade === '小学';
+  const defs = [['event','事件详情'],['theory','理论溯源'],['history','史实溯源']]
+    .filter(([k]) => !(isPrimary && k !== 'event'));
+  defs.forEach(([key,label]) => {
+    const b = document.createElement('button');
+    b.className = 'tab';
+    b.setAttribute('role','tab');
+    b.setAttribute('aria-selected', state.tab === key);
+    b.textContent = label;
+    b.addEventListener('click', () => { state.tab = key; renderTabs(); renderDetail(); });
+    tabs.appendChild(b);
+  });
+}
+
+/* ===== 渲染详情正文（含 node7 谱系遍历） ===== */
+function renderDetail() {
+  const p = DATA.points[state.currentIndex];
+  const body = $('#detail-body');
+  $('#detail-title').textContent = (state.currentIndex+1) + '. ' + p.title;
+  $('#detail-meta').textContent = p.year + ' ｜ ' + p.phase_set + ' ｜ 学段：' + state.grade;
+  renderTabs();
+
+  let h = '';
+  if (state.tab === 'event') {
+    // 学段切换：事件详情正文按 grade 字段换文本（theme_token §6）
+    if (state.grade === '小学') {
+      h += `<div class="block"><p>${esc(p.grade && p.grade['小学'] || p.practice)}</p></div>`;
+    } else {
+      h += `<div class="block"><h4><span class="practice-chip">实践</span></h4><p>${esc(p.grade && p.grade[state.grade] || p.practice)}</p></div>`;
+      h += `<div class="block"><h4><span class="cognition-chip">认识</span></h4><p>${esc(p.recognition)}</p></div>`;
+      h += `<div class="block"><h4><span class="repractice-chip">再实践</span></h4><p>${esc(p.repractice)}</p></div>`;
+      h += `<div class="block"><p class="keydata">关键数据：${esc(p.key_data)}</p></div>`;
+    }
+  } else if (state.tab === 'theory') {
+    // node7 谱系：检测 anch_auxiliary / anch_contemporary
+    const anc = p.anch || {};
+    h += `<div class="block"><h4>毛选理论溯源</h4>`;
+    h += `<div class="anch-src">${esc(anc.src)} ｜ ${esc(anc.vol)} ｜ 第 ${esc(anc.page)} 页</div>`;
+    h += `<div class="anch-excerpt">“${esc(anc.excerpt)}”</div>`;
+    h += `<div class="anch-edition">版次：${esc(anc.edition || '待核')}</div>`;
+    h += `</div>`;
+    // 辅助锚点（node7 有）
+    if (p.anch_auxiliary && p.anch_auxiliary.length) {
+      h += `<div class="block"><h4>辅助锚点</h4>`;
+      p.anch_auxiliary.forEach(a => {
+        h += `<div class="aux-block"><h5>${esc(a.src)}</h5><div class="anch-src">${esc(a.vol)} ｜ 第 ${esc(a.page)} 页</div><div class="anch-excerpt">“${esc(a.excerpt)}”</div></div>`;
+      });
+      h += `</div>`;
+    }
+    // 当代印证（node7 有）
+    if (p.anch_contemporary) {
+      const c = p.anch_contemporary;
+      h += `<div class="block"><h4>当代印证</h4><div class="contemp-block"><h5>${esc(c.src)}</h5><p>${esc(c.excerpt)}</p><div class="note-mark">※ ${esc(c.note || '非《毛选》原文')}</div></div></div>`;
+    }
+  } else if (state.tab === 'history') {
+    h += `<div class="block"><h4>史实溯源（新闻报道）</h4>`;
+    (p.source || []).forEach(s => {
+      h += `<div class="block"><div>${esc(s.title)}</div><a class="src-link" href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.url)}</a></div>`;
+    });
+    h += `</div>`;
+  }
+  body.innerHTML = h;
+}
+
+/* ===== 键盘导航（←/→ 切节点） ===== */
+document.addEventListener('keydown', (e) => {
+  const detailOpen = $('#detail-panel').classList.contains('open');
+  if (e.key === 'ArrowRight') { openDetail(Math.min(state.currentIndex+1, 6)); }
+  else if (e.key === 'ArrowLeft') { openDetail(Math.max(state.currentIndex-1, 0)); }
+  else if (e.key === 'Escape' && detailOpen) { closeDetail(); }
+});
+
+/* ===== 初始化 ===== */
+$('#detail-close').addEventListener('click', closeDetail);
+document.querySelectorAll('.grade-btn').forEach(b => {
+  b.addEventListener('click', () => setGrade(b.dataset.grade));
+});
+// 延迟到天地图 API 完全就绪再初始化（避免 extend 时序错误）
+setTimeout(() => {
+  if (typeof T !== 'undefined' && T.Map) initMap();
+  else { console.warn('天地图API未就绪，直接降级离线SVG'); buildOfflineSvg(); }
+}, 300);
+renderTimeline(); renderStepper();
+window.__SKELETON_READY__ = DATA.points.length === 7;
+</script>
+</body>
+</html>

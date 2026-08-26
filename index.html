@@ -616,10 +616,11 @@ function buildPolylinePoints() {
 /* 在线天地图初始化 */
 function initOnlineMap() {
   const center = DATA.map.center;
+  const vecUrl = 'https://t0.tianditu.gov.cn/vec_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=vec&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=' + DATA.map.key;
   const map = new T.Map('tianditu', {
     center: new T.LngLat(center[1], center[0]),  // map.center 为 [lat,lng]，转序
     zoom: DATA.map.zoom,
-    layers: [new T.TileLayer('vec')]             // 矢量底图
+    layers: [new T.TileLayer(vecUrl)]            // 矢量底图（显式 url 模板）
   });
   mapInstance = map;
   mapMode = 'online';

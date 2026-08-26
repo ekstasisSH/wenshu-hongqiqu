@@ -666,7 +666,7 @@ function highlightMapNode(i) {
 function setPolylineForNode(i) {
   if (!mapInstance || mapMode !== 'online' || !mapLine) return;
   try {
-    mapLine.setPath(buildPolylinePoints());  // 更新到当前节点
+    mapLine.setLngLats(buildPolylinePoints());  // 更新到当前节点（天地图v4.0正确API）
     // 闪两次高亮续长段
     const last = DATA.points[i];
     const hl = new T.Polyline([new T.LngLat(last.geo.lng, last.geo.lat), new T.LngLat(last.geo.lng, last.geo.lat)], {

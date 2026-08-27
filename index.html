@@ -244,10 +244,10 @@ const DATA = {
     "edition": "待核"
    },
    "geo": {
-    "lng": 113.82,
-    "lat": 36.23,
+    "lng": 113.67,
+    "lat": 36.38,
     "precision": "估算",
-    "note": "分水苑·渠首（引漳入林开工指挥部）"
+    "note": "渠首枢纽（山西平顺县石城镇侯壁断下，拦河溢流坝引漳入林，1960.2动工）"
    },
    "grade": {
     "小学": "1960年，很多叔叔阿姨去山上开始修一条大水渠。",
@@ -324,10 +324,10 @@ const DATA = {
     "edition": "待核"
    },
    "geo": {
-    "lng": 113.8,
-    "lat": 36.28,
+    "lng": 113.819383,
+    "lat": 36.23367,
     "precision": "估算",
-    "note": "姚村/总指挥部一带"
+    "note": "分水闸/总指挥部一带（资金决策中枢，1961.7面临停工）"
    },
    "grade": {
     "小学": "没钱了，大家就省吃俭用、自带干粮工具，也要把渠修下去",
@@ -608,11 +608,6 @@ let mapLine = null;
 let mapMode = 'loading';   // loading | online | svg
 
 /* 渠线 Polyline：7 节点 geo 连线 */
-function buildPolylinePoints() {
-  // 渠线随节点演进：只画到当前节点（含）为止，点下一节点续长
-  return DATA.points.slice(0, state.currentIndex + 1).map(p => new T.LngLat(p.geo.lng, p.geo.lat));
-}
-
 /* 在线天地图初始化 */
 function initOnlineMap() {
   const center = DATA.map.center;
@@ -631,11 +626,6 @@ function initOnlineMap() {
     map.addOverLay(m);
     return m;
   });
-  mapLine = new T.Polyline(buildPolylinePoints(), {
-    color: '#C81623', weight: 4, opacity: 0.9
-  });
-  map.addOverLay(mapLine);
-  // 联动：当前节点高亮
   highlightMapNode(state.currentIndex);
 }
 
@@ -660,85 +650,10 @@ function highlightMapNode(i) {
   if (!mapInstance || mapMode !== 'online') return;
   const p = DATA.points[i];
   mapMarkers.forEach((m, idx) => m.setIcon(markerIcon(idx)));
-  // panTo 居中到当前节点
-  mapInstance.panTo(new T.LngLat(p.geo.lng, p.geo.lat));
-  setPolylineForNode(i);  // 渠线演进到当前节点 + 闪两次
-  mapInstance.setZoom(Math.max(mapInstance.getZoom(), 11));
+  // 点击聚焦：setView 直接居中到当前节点（确定生效）
+  mapInstance.setView(new T.LngLat(p.geo.lng, p.geo.lat), Math.max(mapInstance.getZoom(), 11));
 }
 
-
-/* 渠线随节点演进 + 闪两次高亮（在线） */
-function setPolylineForNode(i) {
-  if (!mapInstance || mapMode !== 'online' || !mapLine) return;
-  try {
-    mapLine.setLngLats(buildPolylinePoints());  // 更新到当前节点（天地图v4.0正确API）
-    // 闪两次高亮续长段
-    const last = DATA.points[i];
-    const hl = new T.Polyline([new T.LngLat(last.geo.lng, last.geo.lat), new T.LngLat(last.geo.lng, last.geo.lat)], {
-      color: '#D4A017', weight: 8, opacity: 1
-    });
-    map.addOverLay(hl);
-    let k = 0;
-    const flash = setInterval(() => {
-      k++;
-      hl.setOpacity(k % 2 === 1 ? 1 : 0.2);
-      if (k >= 4) { clearInterval(flash); map.removeOverLay(hl); }  // 闪两次(4半周期)
-    }, 250);
-  } catch(e) {}
-}
-/* 离线可交互 SVG（3c）：渠线 + 7 可点 Marker，共用同一 state */
-let svgEl = null;
-function buildOfflineSvg() {
-  const stage = document.querySelector('#tianditu');
-  if (mapInstance) { try { mapInstance.clearOverLays(); } catch(e){} mapInstance = null; }
-  mapMarkers = []; mapLine = null;
-  stage.innerHTML = '';
-  mapMode = 'svg';
-  const svgNS = 'http://www.w3.org/2000/svg';
-  const svg = document.createElementNS(svgNS, 'svg');
-  svg.setAttribute('viewBox', '0 0 400 300');
-  svg.setAttribute('width', '100%');
-  svg.setAttribute('height', '100%');
-  svg.style.background = '#FBF7F0';
-  // 全部 7 点（Marker 用）+ 渠线只画到当前节点（演进）
-  const allPts = DATA.points.map(p => projXY(p.geo.lng, p.geo.lat));
-  const pts = allPts.slice(0, state.currentIndex + 1);  // 渠线演进
-  const line = document.createElementNS(svgNS, 'polyline');
-  line.setAttribute('points', pts.map(pt => pt.x + ',' + pt.y).join(' '));
-  line.setAttribute('fill', 'none');
-  line.setAttribute('stroke', '#C81623');
-  line.setAttribute('stroke-width', '3');
-  line.setAttribute('stroke-linecap', 'round');
-  line.setAttribute('stroke-linejoin', 'round');
-  svg.appendChild(line);
-  // 续长段闪两次高亮（最后一段）
-  if (pts.length >= 2) {
-    const last = pts[pts.length - 2];
-    const cur = pts[pts.length - 1];
-    const flashSeg = document.createElementNS(svgNS, 'line');
-    flashSeg.setAttribute('x1', last.x); flashSeg.setAttribute('y1', last.y);
-    flashSeg.setAttribute('x2', cur.x); flashSeg.setAttribute('y2', cur.y);
-    flashSeg.setAttribute('stroke', '#D4A017');
-    flashSeg.setAttribute('stroke-width', '6');
-    flashSeg.setAttribute('stroke-linecap', 'round');
-    flashSeg.classList.add('seg-flash');
-    svg.appendChild(flashSeg);
-  }
-  // 7 可点 Marker（复用 openDetail）
-  DATA.points.forEach((p, i) => {
-    const c = document.createElementNS(svgNS, 'circle');
-    c.setAttribute('cx', allPts[i].x); c.setAttribute('cy', allPts[i].y);
-    c.setAttribute('r', '7');
-    c.setAttribute('fill', '#FFFFFF');
-    c.setAttribute('stroke', '#C81623');
-    c.setAttribute('stroke-width', '2');
-    c.style.cursor = 'pointer';
-    c.addEventListener('click', () => openDetail(i));
-    svg.appendChild(c);
-  });
-  stage.appendChild(svg);
-  svgEl = svg;
-}
 
 /* 地理坐标 → SVG 平面投影（简化，仅示意渠线走向） */
 function projXY(lng, lat) {
@@ -773,6 +688,41 @@ function initMap() {
 
 /* ===== 详情弹层（I2 单弹层 + 三 Tab） ===== */
 /* 渠线演进（在线/离线） */
+function buildOfflineSvg() {
+  const stage = document.querySelector('#tianditu');
+  if (mapInstance) { try { mapInstance.clearOverLays(); } catch(e){} mapInstance = null; }
+  mapMarkers = []; mapLine = null;
+  stage.innerHTML = '';
+  mapMode = 'svg';
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(svgNS, 'svg');
+  svg.setAttribute('viewBox', '0 0 400 300');
+  svg.setAttribute('width', '100%');
+  svg.setAttribute('height', '100%');
+  svg.style.background = '#FBF7F0';
+  // 7 个可点 Marker（叙事点，无渠线连线）
+  const allPts = DATA.points.map(p => projXY(p.geo.lng, p.geo.lat));
+  DATA.points.forEach((p, i) => {
+    const active = i === state.currentIndex;
+    const c = document.createElementNS(svgNS, 'circle');
+    c.setAttribute('cx', allPts[i].x); c.setAttribute('cy', allPts[i].y);
+    c.setAttribute('r', active ? 9 : 7);
+    c.setAttribute('fill', active ? '#C81623' : '#FFFFFF');
+    c.setAttribute('stroke', '#C81623');
+    c.setAttribute('stroke-width', '2');
+    c.style.cursor = 'pointer';
+    c.addEventListener('click', () => openDetail(i));
+    // 节点名标签
+    const t = document.createElementNS(svgNS, 'text');
+    t.setAttribute('x', allPts[i].x + 10); t.setAttribute('y', allPts[i].y + 4);
+    t.setAttribute('font-size', '11'); t.setAttribute('fill', '#2B2B2B');
+    t.textContent = p.title;
+    svg.appendChild(c); svg.appendChild(t);
+  });
+  stage.appendChild(svg);
+  svgEl = svg;
+}
+
 function applyChannel(i) {
   if (mapMode === 'online') highlightMapNode(i);       // 在线：Marker高亮+panTo+渠线演进
   else if (mapMode === 'svg') buildOfflineSvg();       // 离线：重建渠线（随节点演进）

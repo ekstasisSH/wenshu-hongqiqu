@@ -780,6 +780,10 @@ function closeDetail() {
   // x 返回：显示列表，隐藏详情
   $('#stepper-view-detail').hidden = true;
   $('#stepper-view-list').hidden = false;
+  // 复位离线地图缩放（回到初始未放大状态）
+  const om = document.getElementById('offline-map');
+  if (om) { om.style.transform = 'none'; om.style.transformOrigin = 'center center'; }
+  offFocus = null;
   // 焦点返回时间轴当前节点
   $('#timeline .tl__node.active')?.focus();
 }

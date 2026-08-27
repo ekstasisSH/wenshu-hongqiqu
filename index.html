@@ -725,7 +725,7 @@ function buildOfflineSvg() {
   box.className = 'offline-map';
   box.id = 'offline-map';
   box.style.backgroundImage = 'url(data:image/png;base64,' + OFFLINE.base64 + ')';
-  box.style.backgroundSize = 'contain';
+  box.style.backgroundSize = '100% 100%';  // 拉伸铺满容器，Marker 百分比精确对齐
   box.style.backgroundPosition = 'center';
   box.style.backgroundRepeat = 'no-repeat';
   box.style.position = 'absolute'; box.style.inset = '0';

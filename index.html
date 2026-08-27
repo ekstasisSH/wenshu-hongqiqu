@@ -775,7 +775,7 @@ function highlightMapNode(i) {
   const p = DATA.points[i];
   mapMarkers.forEach((m, idx) => m.setIcon(markerIcon(idx)));
   // 点击聚焦：setView 直接居中到当前节点（确定生效）
-  mapInstance.setView(new T.LngLat(p.geo.lng, p.geo.lat), Math.max(mapInstance.getZoom(), 11));
+  mapInstance.panTo(new T.LngLat(p.geo.lng, p.geo.lat));  // 天地图 v4.0: panTo 聚焦
 }
 
 

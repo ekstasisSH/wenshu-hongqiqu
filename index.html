@@ -21,131 +21,59 @@ html,body { height:100%; }
 body { font-family:var(--font-body); background:var(--bg); color:var(--ink); font-size:16px; -webkit-font-smoothing:antialiased; }
 
 /* ===== 栅格：CSS Grid + 移动优先 ===== */
-.app { display:grid; grid-template-columns:1fr; grid-template-rows:auto auto; min-height:100vh; }
+.app { display:flex; flex-direction:column; min-height:100vh; }
+.app > .main { flex:1; min-height:0; }
+.app__head {
+  flex:0 0 auto;  /* 不拉伸 */
+  background:var(--panel); border-bottom:1px solid var(--line);
+  padding:10px 18px;
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+}
+.app__head h1 { font-family:var(--font-title); font-weight:700; font-size:20px; color:var(--primary-deep); }
+.app__head .sub { font-size:12px; color:var(--ink-sub); }
+.app__head .grade-switch { margin-left:auto; }
 .main { display:grid; grid-template-columns:1fr; min-height:0; }
 .stepper { background:var(--panel); border-bottom:1px solid var(--line); padding:14px; overflow-y:auto; }
 .map-stage { position:relative; min-height:42vh; background:var(--bg); border-bottom:1px solid var(--line); }
 .map-stage__map { position:absolute; inset:0; }
-.timeline-bar { position:sticky; bottom:0; background:var(--panel); border-top:1px solid var(--line); padding:10px 12px; z-index:20; }
+.timeline-bar { flex:0 0 auto; position:sticky; bottom:0; background:var(--panel); border-top:1px solid var(--line); padding:10px 12px; z-index:20; }
 
 @media (min-width:768px) {
-  .main { grid-template-columns:300px 1fr; }
+  .main { grid-template-columns:40% 60%; }
   .stepper { border-bottom:none; border-right:1px solid var(--line); min-height:0; }
   .map-stage { min-height:0; border-bottom:none; }
   .timeline-bar { position:static; }
 }
 @media (min-width:1280px) {
-  .main { grid-template-columns:240px 1fr 320px; }
+  .main { grid-template-columns:40% 60%; }  /* 左四右六 */
   .stepper { border-right:1px solid var(--line); }
-  .map-stage { border-right:1px solid var(--line); }
 
 }
 
 
-/* ===== 右栏：当前阶段图片钩子（用户定图后填充） ===== */
-.stage-img { display:none; }
-@media (min-width:1280px) {
-  .stage-img { display:block; border-left:1px solid var(--line); background:var(--panel); min-height:0; overflow-y:auto; padding:14px; }
-  .stage-img__inner { height:100%; display:flex; flex-direction:column; }
-  .stage-img__placeholder { flex:1; display:flex; align-items:center; justify-content:center; color:var(--ink-sub); font-size:13px; border:1px dashed var(--line); border-radius:var(--radius); min-height:200px; }
+
+/* ===== 节点图片小弹窗 ===== */
+.img-pop {
+  position:fixed; right:20px; bottom:80px; z-index:1500;
+  background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+  box-shadow:0 8px 24px rgba(43,43,43,.14); padding:12px; width:260px;
+  display:none;
 }
-/* ===== 头部 ===== */
-.app__head {
-  background:var(--panel); border-bottom:1px solid var(--line);
-  padding:10px 18px;
-  display:flex; align-items:center; justify-content:space-between; gap:12px;
+.img-pop.open { display:block; }
+.img-pop__title { font-size:13px; font-weight:700; color:var(--primary-deep); margin-bottom:8px; }
+.img-pop__frame {
+  width:100%; height:160px; background:var(--bg); border:1px dashed var(--line);
+  border-radius:var(--radius-sm); display:flex; align-items:center; justify-content:center;
+  color:var(--ink-sub); font-size:12px; overflow:hidden;
 }
-.app__head .sub { font-size:12px; color:var(--ink-sub); }
-.app__head h1 { font-family:var(--font-title); font-weight:700; font-size:20px; color:var(--primary-deep); }
-.app__head .sub { font-size:13px; color:var(--ink-sub); margin-top:4px; }
-
-/* ===== 时间轴（移动端底部固定） ===== */
-.tl { display:flex; align-items:center; gap:2px; }
-.tl__node { display:flex; flex-direction:column; align-items:center; gap:4px; flex:1; background:none; border:none; cursor:pointer; }
-.tl__dot { width:14px; height:14px; border-radius:50%; border:2px solid var(--line); background:var(--panel); transition:all .3s ease-out; }
-.tl__year { font-size:11px; color:var(--ink-sub); }
-.tl__node.active .tl__dot { background:var(--primary); border-color:var(--primary-deep); transform:scale(1.2); }
-.tl__node.active .tl__year { color:var(--primary-deep); font-weight:700; }
-.tl__node:focus-visible .tl__dot { outline:2px solid var(--accent); outline-offset:2px; }
-
-/* ===== 左栏 stepper ===== */
-.stepper__title { font-family:var(--font-title); font-weight:600; font-size:15px; color:var(--primary-deep); margin-bottom:10px; }
-.stepper__list { display:flex; flex-direction:column; gap:6px; }
-.stepper__node { display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:var(--radius-sm); cursor:pointer; border:1px solid transparent; background:none; width:100%; text-align:left; }
-.stepper__node .dot { width:10px; height:10px; border-radius:50%; border:2px solid var(--line); background:var(--panel); flex-shrink:0; }
-.stepper__node .label { font-size:13px; color:var(--ink); }
-.stepper__node .phase { font-size:11px; color:var(--ink-sub); }
-.stepper__node.active { background:var(--bg); border-color:var(--primary); }
-.stepper__node.active .dot { background:var(--primary); border-color:var(--primary-deep); }
-.stepper__node.active .label { color:var(--primary-deep); font-weight:700; }
-.stepper__node:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
-
-/* ===== 详情弹层（全局唯一） ===== */
-.detail {
-  position:fixed; top:0; left:0; right:0; bottom:0; z-index:2000;
-  background:rgba(43,43,43,.45); display:none; align-items:stretch; justify-content:flex-start;
+.img-pop__frame img { width:100%; height:100%; object-fit:cover; }
+.img-pop__close {
+  position:absolute; top:6px; right:6px; background:var(--panel); border:1px solid var(--line);
+  border-radius:50%; width:22px; height:22px; cursor:pointer; line-height:1; color:var(--ink);
 }
-/* 左侧滑出面板：覆盖左栏 stepper 区，保留右侧地图视野 */
-.detail__card {
-  width:380px; max-width:85vw; height:100%; max-height:100vh; overflow-y:auto;
-  background:var(--panel); padding:18px 20px 22px; border-right:1px solid var(--line);
-  box-shadow:0 8px 24px rgba(43,43,43,.14);
-}
-
-.detail.open { display:flex; }
-.detail__head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; }
-.detail__title { font-family:var(--font-title); font-size:20px; font-weight:700; color:var(--primary-deep); }
-.detail__meta { font-size:12px; color:var(--ink-sub); margin-top:4px; }
-.detail__close { background:none; border:1px solid var(--line); border-radius:var(--radius-sm); padding:4px 10px; cursor:pointer; font-size:14px; color:var(--ink); }
-.detail__close:focus-visible { outline:2px solid var(--accent); }
-
-/* Tab */
-.tabs { display:flex; gap:6px; border-bottom:2px solid var(--line); margin-bottom:14px; }
-.tab { background:none; border:none; padding:8px 14px; font-size:14px; color:var(--ink-sub); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-2px; }
-.tab[aria-selected="true"] { color:var(--primary-deep); font-weight:700; border-bottom-color:var(--primary); }
-.tab:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
-
-.detail__body { font-size:14px; line-height:1.7; color:var(--ink); }
-.detail__body .block { margin-bottom:16px; }
-.detail__body .block h4 { font-size:14px; font-weight:700; color:var(--primary-deep); margin-bottom:6px; display:flex; align-items:center; gap:6px; }
-.practice-chip { border:1px solid var(--practice); color:var(--practice); border-radius:4px; padding:0 6px; font-size:11px; }
-.cognition-chip { border:1px solid var(--cognition); color:var(--primary-deep); border-radius:4px; padding:0 6px; font-size:11px; }
-.repractice-chip { border:1px solid var(--repractice); color:var(--repractice); border-radius:4px; padding:0 6px; font-size:11px; }
-.keydata { border-left:3px solid var(--accent); padding-left:10px; color:var(--primary-deep); font-weight:600; }
-.anch-src { font-size:13px; color:var(--ink-sub); margin-top:4px; }
-.anch-excerpt { font-style:italic; color:var(--ink); border-left:3px solid var(--line); padding-left:10px; margin-top:6px; }
-.anch-edition { font-size:11px; color:var(--ink-sub); margin-top:4px; }
-.src-link { display:block; font-size:13px; color:var(--water); margin-top:4px; text-decoration:underline; }
-.aux-block, .contemp-block { border:1px solid var(--line); border-radius:var(--radius-sm); padding:10px; margin-top:8px; }
-.aux-block h5 { font-size:13px; color:var(--primary-deep); margin-bottom:4px; }
-.contemp-block h5 { font-size:13px; color:var(--accent); margin-bottom:4px; }
-.note-mark { font-size:11px; color:var(--ink-sub); }
-
-
-/* ===== 学段切换（I4）：换根 class 切 CSS 变量，DOM 不重排 ===== */
-.app__head { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; }
-.grade-switch { display:flex; gap:4px; background:var(--bg); border:1px solid var(--line); border-radius:var(--radius-sm); padding:3px; }
-.grade-btn { background:none; border:none; padding:5px 12px; font-size:13px; color:var(--ink-sub); cursor:pointer; border-radius:4px; }
-.grade-btn.active { background:var(--primary); color:#fff; font-weight:700; }
-.grade-btn:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
-/* 四学段 CSS 变量 override：只改值，不重排 DOM（theme_token §6） */
-.app[data-grade="小学"] { --body-size: 18px; }
-.app[data-grade="初中"] { --body-size: 16px; }
-.app[data-grade="高中"] { --body-size: 16px; }
-.app[data-grade="大学"] { --body-size: 15px; }
-.app[data-grade="大学"] { --ink: #1a1a1a; }
-.detail__body { font-size: var(--body-size, 16px); }
-
-
-/* 渠线续长段闪两次高亮 */
-.seg-flash { animation: segflash 1s ease-in-out 2; }
-@keyframes segflash { 0%,100%{opacity:1} 50%{opacity:.15} }
-/* 移动端(<768) 弹窗底部弹出（放末尾确保覆盖 base center） */
-
-
 
 /* ===== 离线底图 Marker ===== */
-.offline-map { overflow:hidden; }
+.offline-map { overflow:hidden; position:absolute; inset:0; }
 .off-marker {
   position:absolute; transform:translate(-50%,-50%);
   background:none; border:none; cursor:pointer; padding:0;
@@ -160,8 +88,7 @@ body { font-family:var(--font-body); background:var(--bg); color:var(--ink); fon
 .off-marker.active .off-dot { background:var(--primary); transform:scale(1.2); }
 .off-label {
   font-size:11px; color:var(--ink); background:rgba(251,247,240,.85);
-  padding:1px 5px; border-radius:3px; white-space:nowrap;
-  font-weight:600;
+  padding:1px 5px; border-radius:3px; white-space:nowrap; font-weight:600;
 }
 .off-marker.active .off-label { color:var(--primary-deep); }
 .off-marker:focus-visible .off-dot { outline:2px solid var(--accent); outline-offset:2px; }
@@ -206,15 +133,17 @@ body { font-family:var(--font-body); background:var(--bg); color:var(--ink); fon
       <div class="map-stage__map" id="tianditu"></div>
     </section>
     <!-- 右栏：当前阶段图片钩子（待用户定图后填充） -->
-    <section class="stage-img" aria-label="当前阶段图示">
-      <div class="stage-img__inner" id="stage-img">
-        <div class="stage-img__placeholder" id="stage-img-placeholder">图示待定</div>
-      </div>
-    </section>
-  </div>
+   </div>
   <nav class="timeline-bar" aria-label="时间轴">
     <div class="tl" id="timeline"></div>
   </nav>
+</div>
+
+<!-- 节点图片小弹窗 -->
+<div class="img-pop" id="img-pop" role="dialog" aria-label="节点图片">
+  <button class="img-pop__close" id="img-pop-close" aria-label="关闭">×</button>
+  <div class="img-pop__title" id="img-pop-title"></div>
+  <div class="img-pop__frame" id="img-pop-frame">图片待定</div>
 </div>
 
 <!-- 全局唯一详情弹层 -->
@@ -614,14 +543,6 @@ function selectNode(i) {
   renderTimeline();
   renderStepper();
   applyChannel(i);  // 渠线演进（在线/离线）
-  updateStageImg();  // 右栏图片钩子（待定图后渲染）
-}
-/* 右栏图片钩子：当前阶段占位（将来填图） */
-function updateStageImg() {
-  const ph = document.getElementById('stage-img-placeholder');
-  if (!ph) return;
-  const p = DATA.points[state.currentIndex];
-  ph.textContent = p.year + ' · ' + p.title + '（图示待定）';
 }
 
 
@@ -769,17 +690,33 @@ function applyChannel(i) {
 function openDetail(i) {
   state.currentIndex = i;
   state.tab = 'event';
-  renderTimeline(); renderStepper(); applyChannel(i); updateStageImg(); renderDetail();
+  renderTimeline(); renderStepper(); applyChannel(i); renderDetail();
   // 左栏覆盖详情层：隐藏列表，显示详情
   $('#stepper-view-list').hidden = true;
   $('#stepper-view-detail').hidden = false;
   $('#detail-close').focus();
+  showImgPop(i);  // 图片小弹窗
+}
+
+/* 节点图片小弹窗（占位，待定图后填） */
+function showImgPop(i) {
+  const p = DATA.points[i];
+  const pop = document.getElementById('img-pop');
+  document.getElementById('img-pop-title').textContent = p.title;
+  const frame = document.getElementById('img-pop-frame');
+  // 占位：等提供图后改为 <img src='...'>
+  frame.innerHTML = '<span>图片待定 · ' + p.title + '</span>';
+  pop.classList.add('open');
+}
+function closeImgPop() {
+  document.getElementById('img-pop').classList.remove('open');
 }
 
 function closeDetail() {
   // x 返回：显示列表，隐藏详情
   $('#stepper-view-detail').hidden = true;
   $('#stepper-view-list').hidden = false;
+  closeImgPop();  // 图片弹窗也关
   // 复位离线地图缩放（回到初始未放大状态）
   const om = document.getElementById('offline-map');
   if (om) { om.style.transform = 'none'; om.style.transformOrigin = 'center center'; }
@@ -866,6 +803,7 @@ document.addEventListener('keydown', (e) => {
 
 /* ===== 初始化 ===== */
 $('#detail-close').addEventListener('click', closeDetail);
+$('#img-pop-close').addEventListener('click', closeImgPop);
 document.querySelectorAll('.grade-btn').forEach(b => {
   b.addEventListener('click', () => setGrade(b.dataset.grade));
 });
